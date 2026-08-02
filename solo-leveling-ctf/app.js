@@ -244,7 +244,7 @@ const renderSystemUI = (title, levelNum, contentHtml) => `
 <body>
     <div class="bg-container">
         <video class="bg-video" autoplay muted loop playsinline>
-            <source src="/solo.mp4" type="video/mp4">
+            <source src="https://github.com/TRIPPY-PrX/solo-leveling-CTF/blob/main/solo-leveling-ctf/solo.mp4" type="video/mp4">
         </video>
         <div class="bg-layer"></div>
         <div class="bg-grid"></div>
