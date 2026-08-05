@@ -29,18 +29,33 @@ node app.js
 
 The server listens on `http://localhost:3000` by default.
 
-## Docker
+## Docker build and run
 
-Set flags like below and run
+From the project folder, build the image:
 
 ```bash
-docker run -d \
-  -p 3000:3000 \
-  -e FLAG1="FLAG{sung_jinwoo_awakened}" \
-  -e FLAG2="FLAG{monarch_records_dumped}" \
-  -e FLAG3="FLAG{arise_shadow_army_obtained}" \
+cd solo-leveling-ctf
+docker build -t solo-leveling-ctf .
+```
+
+Then start the container with the challenge flags:
+
+```bash
+docker run -d --name solo-leveling-ctf -p 3000:3000 \
+  -e FLAG1="FLAG{1_ASCENDANT_WARDEN_AWAKES}" \
+  -e FLAG2="FLAG{2_SHADOW_SIGIL_DATABASE_REVEALED}" \
+  -e FLAG3="FLAG{3_OMNIS_COMMAND_FURY_ROOT}" \
   solo-leveling-ctf
-  ```
+```
+
+Open the app at http://localhost:3000.
+
+To stop and remove the container later:
+
+```bash
+docker stop solo-leveling-ctf
+docker rm solo-leveling-ctf
+```
 
 ## Endpoints & behavior
 

@@ -1,0 +1,184 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Solo Leveling CTF - SPA</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap');
+    html,body{height:100%;margin:0}
+    body { background-color: #060913; color: #d1f0ff; font-family: 'Rajdhani', sans-serif; margin: 0; min-height: 100vh; display:flex; align-items:center; justify-content:center; }
+    .bg-container { position: fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
+    .bg-video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0.65; filter: brightness(0.45) contrast(1.1); }
+    .system-window{ background: rgba(8,18,38,0.88); border:2px solid #00d2ff; box-shadow:0 0 25px rgba(0,210,255,0.35); border-radius:6px; width:760px; padding:28px; box-sizing:border-box; position:relative; z-index:1 }
+    .system-header{ font-family:'Orbitron',sans-serif; font-size:18px; color:#00d2ff; text-transform:uppercase; display:flex; justify-content:space-between; border-bottom:1px solid rgba(0,210,255,0.2); padding-bottom:10px; margin-bottom:14px }
+    .level-badge{ background:#00d2ff; color:#04070f; padding:4px 8px; border-radius:3px; font-weight:900 }
+    h1{margin:8px 0 12px 0; color:#bff; font-family:'Orbitron',sans-serif}
+    .nav{display:flex;gap:8px;margin-bottom:12px}
+    .nav button{background:transparent;border:1px solid #0fb8ff;color:#0fb8ff;padding:6px 8px;cursor:pointer}
+    input,textarea{background:#040b18;border:1px solid #00d2ff;color:#00f0ff;padding:10px;width:100%;box-sizing:border-box}
+    button.primary{background:#00d2ff;border:none;padding:10px 14px;color:#04070f;cursor:pointer}
+    pre{background:#02060d;padding:10px;color:#00ff80;border:1px solid #00d2ff}
+    .flag{background:rgba(0,255,128,0.08);border:1px solid #00ff80;color:#00ff80;padding:10px;margin-top:10px}
+    .small{font-size:13px;color:#aee}
+  </style>
+</head>
+<body>
+  <div class="bg-container">
+    <video class="bg-video" autoplay muted loop playsinline>
+      <source src="/solo.mp4" type="video/mp4">
+    </video>
+  </div>
+
+  <div class="system-window">
+    <div class="system-header">
+      <span>[ SYSTEM NOTIFICATION ]</span>
+      <span class="level-badge">QUEST HUB</span>
+    </div>
+    <div class="nav">
+      <button data-route="/">Home</button>
+      <button data-route="/level1">Level 1</button>
+      <button data-route="/level2">Level 2</button>
+      <button data-route="/level3">Level 3</button>
+      <button id="resetBtn">Hard Reset</button>
+    </div>
+    <h1>Shadow Trials</h1>
+    <div id="content"></div>
+    <div id="status" class="small"></div>
+  </div>
+
+  <script>
+    const content = document.getElementById('content');
+    const statusEl = document.getElementById('status');
+
+    async function api(path, opts={}){
+      const res = await fetch(path, Object.assign({ credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } }, opts));
+      const type = res.headers.get('content-type') || '';
+      if(type.includes('application/json')) return res.json();
+      return res.text();
+    }
+
+    async function refreshStatus(){
+      const s = await api('/api/status');
+      statusEl.textContent = `Progress: ${s.progress} | Levels: ${JSON.stringify(s.levels)}`;
+      return s;
+    }
+
+    function navigate(route){
+      history.pushState({}, '', route);
+      renderRoute(route);
+    }
+
+    async function renderRoute(route){
+      await refreshStatus();
+      if(route === '/' || route === ''){
+        content.innerHTML = `
+          <div class="level"><p>Welcome to the Shadow Trials. Complete each level sequentially to obtain the root flag.</p>
+          <p class="small">Use the navigation buttons to switch between levels without reloading the page. A hard reset will clear your session.</p></div>`;
+        return;
+      }
+
+      if(route === '/level1'){
+        content.innerHTML = `
+          <div class="level">
+            <h3>Level 1 — Cookie Manipulation</h3>
+            <p class="small">Submit a base64-encoded quest state where <code>hunter_rank=S_RANK</code> to pass.</p>
+            <label>Base64 State</label>
+            <input id="lvl1state" placeholder="hunter_rank=S_RANK;progress=1" />
+            <div style="display:flex;gap:8px">
+              <button id="genLvl1" class="primary">Generate S_RANK State</button>
+              <button id="lvl1btn">Submit</button>
+            </div>
+            <div id="lvl1res"></div>
+          </div>`;
+        document.getElementById('genLvl1').onclick = ()=>{
+          const raw = 'hunter_rank=S_RANK;progress=1';
+          const b = btoa(raw);
+          document.getElementById('lvl1state').value = b;
+          // set cookie like original implementation (helps compatibility)
+          document.cookie = `system_quest=${b}; path=/`;
+        }
+        document.getElementById('lvl1btn').onclick = async ()=>{
+          const state = document.getElementById('lvl1state').value.trim();
+          const r = await api('/api/level1', { method:'POST', body: JSON.stringify({ state }) });
+          document.getElementById('lvl1res').textContent = JSON.stringify(r);
+          await refreshStatus();
+        }
+        return;
+      }
+
+      if(route === '/level2'){
+        content.innerHTML = `
+          <div class="level">
+            <h3>Level 2 — Hunter Registry (SQLi)</h3>
+            <p class="small">Search by name. The backend is intentionally vulnerable to SQLi.</p>
+            <label>Search term</label>
+            <input id="lvl2q" placeholder="Sung Jinwoo" />
+            <button id="lvl2btn">Search</button>
+            <div id="lvl2res"></div>
+            <div id="lvl2proceed"></div>
+          </div>`;
+        document.getElementById('lvl2btn').onclick = async ()=>{
+          const q = document.getElementById('lvl2q').value.trim();
+          const r = await api('/api/level2', { method:'POST', body: JSON.stringify({ hunter_name: q }) });
+          document.getElementById('lvl2res').innerHTML = '<pre>'+JSON.stringify(r,null,2)+'</pre>';
+          const s = await refreshStatus();
+          if (s.levels && s.levels[2]){
+            document.getElementById('lvl2proceed').innerHTML = '<button id="toLevel3">>> PROCEED TO QUEST 3: SHADOW EXTRACTION</button>';
+            document.getElementById('toLevel3').onclick = ()=> navigate('/level3');
+          } else {
+            document.getElementById('lvl2proceed').innerHTML = '';
+          }
+        }
+        // show proceed button if already completed when entering page
+        (async ()=>{
+          const s = await refreshStatus();
+          if (s.levels && s.levels[2]){
+            document.getElementById('lvl2proceed').innerHTML = '<button id="toLevel3">>> PROCEED TO QUEST 3: SHADOW EXTRACTION</button>';
+            document.getElementById('toLevel3').onclick = ()=> navigate('/level3');
+          }
+        })();
+        return;
+      }
+
+      if(route === '/level3'){
+        content.innerHTML = `
+          <div class="level">
+            <h3>Level 3 — Command Extraction</h3>
+            <p class="small">Invoke the spell target. There is filtering, but the server is intentionally exploitable.</p>
+            <label>Spell target</label>
+            <input id="lvl3t" placeholder="igris" />
+            <button id="lvl3btn">Arise</button>
+            <div id="lvl3res"></div>
+            <div id="finalFlag"></div>
+          </div>`;
+        document.getElementById('lvl3btn').onclick = async ()=>{
+          const t = document.getElementById('lvl3t').value.trim();
+          const r = await api('/api/level3', { method:'POST', body: JSON.stringify({ spell_target: t }) });
+          document.getElementById('lvl3res').innerHTML = '<pre>'+JSON.stringify(r,null,2)+'</pre>';
+          await refreshStatus();
+          const f = await api('/api/final').catch(()=>null);
+          if(f && f.ok) document.getElementById('finalFlag').innerHTML = `<div class="flag">ROOT FLAG: ${f.flag}</div>`;
+        }
+        return;
+      }
+
+      content.innerHTML = '<div class="level">Unknown route</div>';
+    }
+
+    // nav buttons
+    document.querySelectorAll('.nav button[data-route]').forEach(b=> b.onclick = ()=> navigate(b.dataset.route));
+    document.getElementById('resetBtn').onclick = async ()=>{
+      await api('/api/reset', { method:'POST' });
+      // full reload to trigger hard-reset behavior
+      location.reload();
+    }
+
+    // handle back/forward
+    window.onpopstate = ()=> renderRoute(location.pathname);
+
+    // initial render
+    renderRoute(location.pathname || '/');
+  </script>
+</body>
+</html>
