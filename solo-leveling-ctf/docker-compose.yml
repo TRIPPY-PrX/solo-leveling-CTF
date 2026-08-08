@@ -1,0 +1,13 @@
+services:
+  app:
+    build:
+      context: ./solo-leveling-ctf
+    container_name: solo-leveling-ctf
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      RANK_TOKEN: FLAG{1_E_R4NK_T0_S_R4NK_AWAKENED}
+      ARCHIVE_TOKEN: FLAG{2_SHADOW_MONARCH_SQLI_LEAKED}
+      FLAG: FLAG{3_ARISE_COMMAND_INJECTION_ROOT}
+    restart: unless-stopped
